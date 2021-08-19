@@ -125,16 +125,15 @@ namespace DynamicData.Tests.Cache
                             Debug.WriteLine("JOIN APPLIED - NO MATCH");
                             return (element, element.ItemName);
                         }
-
                     });
 
 
                 return (joined, group.Key);
 
-            }, true).AutoRefreshOnObservable(x => input2);
+            }, true); // NOTE: does this one need to be here for the group add/remove? .AutoRefreshOnObservable(x => input2);
 
             var groupedOnRep = capGroupsWithReps
-                .AutoRefreshOnObservable(x => x.joined)
+                .AutoRefreshOnObservable(x => x.joined)//NOTE: This AROE must be here for things to work
                 .Transform(g =>
                 {
                     //group the elements based upon the results of the joined labels and transform to new element which is a combination of the element values
