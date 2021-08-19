@@ -3,8 +3,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reactive.Disposables;
+using System.Reactive.Linq;
 using System.Text;
 using DynamicData.Binding;
+using DynamicData.Cache;
+using DynamicData.Cache.Internal;
+using DynamicData.Kernel;
 using FluentAssertions;
 using Xunit;
 
@@ -130,7 +134,9 @@ namespace DynamicData.Tests.Cache
             }, true).AutoRefreshOnObservable(x => input2.AsObservableCache().Connect());
 
 
-            var groupedOnRep = capGroupsWithReps.AsObservableCache().Connect().AutoRefreshOnObservable(x => x.joined.Connect()).Transform(g =>
+            var groupedOnRep = capGroupsWithReps
+                .AutoRefreshOnObservable(x => x.joined.Connect())
+                .Transform(g =>
             {
                 //group the elements based upon the results of the joined labels and transform to new element which is a combination of the element values
                 var combinedReps = g.joined.AsObservableCache().Connect().Group(s => s.Item2).Transform(t =>
@@ -145,6 +151,7 @@ namespace DynamicData.Tests.Cache
 
             //originally was trying to use mergemany to join all the elements back together, but removed items were not reflected in resulting cache
             var combined = groupedOnRep.AsObservableCache().Connect().UnionMany(x => x);
+
 
             var results = combined.AsAggregator();
 
@@ -237,46 +244,25 @@ namespace DynamicData.Tests.Cache
     {
         public static IObservable<IChangeSet<TObjectOut, TKeyOut>> UnionMany<TObjectOut, TKeyOut, TObjectIn, TKeyIn>(
             this IObservable<IChangeSet<TObjectIn, TKeyIn>> source, Func<TObjectIn, IObservable<IChangeSet<TObjectOut, TKeyOut>>> cacheSelector)
+            where TKeyOut : notnull
+            where TKeyIn : notnull
         {
-            return new Combiner<TObjectOut, TKeyOut, TKeyIn>(source.Transform(cacheSelector)).Run();
-        }
-    }
+            /*
+             *
+             *  Holy schmoly this is not for the feint hearted.
+             *
+             *  I think the sheer plethora of types is what put me off adding overloads for the specific problem of joining nested caches.
+             *
+             *  DynamicCombiner is used for the And, Or, Xor and Except operators. These correctly join nested collections as they correctly
+             *  handle the adding and removing of inner sources i.e. when a source is removed it's contents should be removed
+             *  (unless already within another nested child). It is also highly optimized.
+             *
+             *  Now we know how fix, we need to add an overload to the Or operator. Do you mind investigating and raising a PR?  If not,
+             *  simply copy the combiner into your solution and add this extension.
+             *  
+             */
 
-    public class Combiner<TObject, TKey, TKeyIn> : IDisposable
-    {
-        private readonly SourceList<IObservable<IChangeSet<TObject, TKey>>> _list;
-        private readonly CompositeDisposable _disposables;
-
-        public Combiner(IObservable<IChangeSet<IObservable<IChangeSet<TObject, TKey>>, TKeyIn>> source)
-        {
-            _list = new SourceList<IObservable<IChangeSet<TObject, TKey>>>();
-
-            var subscription = source.Subscribe(changes =>
-            {
-                foreach (var change in changes)
-                {
-                    if (change.Reason == ChangeReason.Add)
-                    {
-                        _list.Add(change.Current);
-                    }
-                    else if (change.Reason == ChangeReason.Remove)
-                    {
-                        _list.Remove(change.Current);
-                    }
-                }
-            });
-
-            _disposables = new CompositeDisposable(subscription, _list);
-        }
-
-        public IObservable<IChangeSet<TObject, TKey>> Run()
-        {
-            return _list.Or();
-        }
-
-        public void Dispose()
-        {
-            _disposables?.Dispose();
+            return new DynamicCombiner<TObjectOut, TKeyOut>(source.Transform(cacheSelector).RemoveKey().AsObservableList(), CombineOperator.Or).Run();
         }
     }
 }
