@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Text;
@@ -134,6 +135,87 @@ namespace DynamicData.Tests.Cache
 
             var groupedOnRep = capGroupsWithReps
                 .AutoRefreshOnObservable(x => x.joined)//NOTE: This AROE must be here for things to work
+                .Transform(g =>
+                {
+                    //group the elements based upon the results of the joined labels and transform to new element which is a combination of the element values
+                    var combinedReps = g.joined.Group(s => s.Item2).Transform(t =>
+                    {
+                        var val = t.Cache.Items.Select(i => i.element.Value).Sum();
+                        Debug.WriteLine($"New combined element {t.Key} Count: {val}");
+                        return new DataElement<double>((string)t.Key, g.Key, val);
+                    }, true).ChangeKey(k => k.Key);
+
+                    return combinedReps;
+                }, true);
+
+            //originally was trying to use mergemany to join all the elements back together, but removed items were not reflected in resulting cache
+            var combined = groupedOnRep.UnionMany(x => x);
+
+
+            var results = combined.AsAggregator();
+
+            Debug.WriteLine("");
+
+            LoadValues();
+            LoadLabels();
+
+            Debug.WriteLine("");
+
+            var element = results.Data.Lookup(("J1", "A")).Value;
+
+            //should be the sum of 2 values
+            element.Value.Should().Be(2);
+
+            _joinLabelsSource.AddOrUpdate(new DataElement<string>("3", "_", "J1"));
+
+            Debug.WriteLine("");
+
+            element = results.Data.Lookup(("J1", "A")).Value;
+
+            //should be the sum of 3 values
+            element.Value.Should().Be(3);
+        }
+
+        [Fact]
+        public void ThisDeadlocks()
+        {
+            var input1 = _valuesSource.Connect();
+            var input2 = _joinLabelsSource.Connect().ChangeKey(x => x.ItemName);
+
+            var captureGroups = input1.GroupOnProperty(x => x.CaptureName)
+                .Transform(g => (g.Cache, g.Key), true);
+
+            var capGroupsWithReps = captureGroups.Transform(group =>
+            {
+                //In order to join two caches key to just the item.
+                var input1Cache = group.Cache.Connect().ChangeKey(k => k.ItemName);
+
+                //Associate the rep group with the element
+                var joined = input1Cache
+                    .LeftJoin(input2, w => w.ItemName, (s, element, repGroupOpt) =>
+                    {
+
+                        //if no replicate group associated with en element item, output with it's own item name so it can be reflected on the output
+                        if (repGroupOpt.HasValue)
+                        {
+                            var groupName = (string)repGroupOpt.Value.Value;
+                            Debug.WriteLine("JOIN APPLIED - MATCH " + groupName);
+                            return (element, (string)repGroupOpt.Value.Value);
+                        }
+                        else
+                        {
+                            Debug.WriteLine("JOIN APPLIED - NO MATCH");
+                            return (element, element.ItemName);
+                        }
+                    });
+
+
+                return (joined, group.Key);
+
+            }, true); // NOTE: does this one need to be here for the group add/remove? .AutoRefreshOnObservable(x => input2);
+
+            var groupedOnRep = capGroupsWithReps
+                .AutoRefreshOnObservable(x => x.joined, changeSetBuffer:TimeSpan.FromMilliseconds(10))//NOTE: This AROE must be here for things to work properly
                 .Transform(g =>
                 {
                     //group the elements based upon the results of the joined labels and transform to new element which is a combination of the element values
