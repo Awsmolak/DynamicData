@@ -97,20 +97,20 @@ namespace DynamicData.Tests.Cache
         [Fact]
         public void CanRecombine()
         {
-            var input1 = _valuesSource.AsObservableCache().Connect();
-            var input2 = _joinLabelsSource.AsObservableCache().Connect().ChangeKey(x => x.ItemName);
+            var input1 = _valuesSource.Connect();
+            var input2 = _joinLabelsSource.Connect().ChangeKey(x => x.ItemName);
 
             var captureGroups = input1.GroupOnProperty(x => x.CaptureName)
-                .Transform(g => (g.Cache, g.Key), true).AsObservableCache();
+                .Transform(g => (g.Cache, g.Key), true);
 
-            var capGroupsWithReps = captureGroups.Connect().Transform(group =>
+            var capGroupsWithReps = captureGroups.Transform(group =>
             {
                 //In order to join two caches key to just the item.
-                var input1Cache = group.Cache.Connect().ChangeKey(k => k.ItemName).AsObservableCache();
+                var input1Cache = group.Cache.Connect().ChangeKey(k => k.ItemName);
 
                 //Associate the rep group with the element
-                var joined = input1Cache.Connect().AutoRefresh()
-                    .LeftJoin(input2.AsObservableCache().Connect().AutoRefresh(), w => w.ItemName, (s, element, repGroupOpt) =>
+                var joined = input1Cache.AutoRefresh()
+                    .LeftJoin(input2.AutoRefresh(), w => w.ItemName, (s, element, repGroupOpt) =>
                     {
 
                         //if no replicate group associated with en element item, output with it's own item name so it can be reflected on the output
@@ -126,31 +126,30 @@ namespace DynamicData.Tests.Cache
                             return (element, element.ItemName);
                         }
 
-                    }).AsObservableCache();
+                    });
 
 
                 return (joined, group.Key);
 
-            }, true).AutoRefreshOnObservable(x => input2.AsObservableCache().Connect());
-
+            }, true).AutoRefreshOnObservable(x => input2);
 
             var groupedOnRep = capGroupsWithReps
-                .AutoRefreshOnObservable(x => x.joined.Connect())
+                .AutoRefreshOnObservable(x => x.joined)
                 .Transform(g =>
-            {
-                //group the elements based upon the results of the joined labels and transform to new element which is a combination of the element values
-                var combinedReps = g.joined.AsObservableCache().Connect().Group(s => s.Item2).Transform(t =>
                 {
-                    var val = t.Cache.Items.Select(i => i.element.Value).Sum();
-                    Debug.WriteLine($"New combined element {t.Key} Count: {val}");
-                    return new DataElement<double>((string)t.Key, g.Key, val);
-                }, true).ChangeKey(k => k.Key).AutoRefresh().AsObservableCache().Connect();
+                    //group the elements based upon the results of the joined labels and transform to new element which is a combination of the element values
+                    var combinedReps = g.joined.Group(s => s.Item2).Transform(t =>
+                    {
+                        var val = t.Cache.Items.Select(i => i.element.Value).Sum();
+                        Debug.WriteLine($"New combined element {t.Key} Count: {val}");
+                        return new DataElement<double>((string)t.Key, g.Key, val);
+                    }, true).ChangeKey(k => k.Key);
 
-                return combinedReps;
-            }, true);
+                    return combinedReps;
+                }, true);
 
             //originally was trying to use mergemany to join all the elements back together, but removed items were not reflected in resulting cache
-            var combined = groupedOnRep.AsObservableCache().Connect().UnionMany(x => x);
+            var combined = groupedOnRep.UnionMany(x => x);
 
 
             var results = combined.AsAggregator();
