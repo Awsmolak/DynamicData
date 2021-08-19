@@ -109,8 +109,8 @@ namespace DynamicData.Tests.Cache
                 var input1Cache = group.Cache.Connect().ChangeKey(k => k.ItemName);
 
                 //Associate the rep group with the element
-                var joined = input1Cache.AutoRefresh()
-                    .LeftJoin(input2.AutoRefresh(), w => w.ItemName, (s, element, repGroupOpt) =>
+                var joined = input1Cache
+                    .LeftJoin(input2, w => w.ItemName, (s, element, repGroupOpt) =>
                     {
 
                         //if no replicate group associated with en element item, output with it's own item name so it can be reflected on the output
