@@ -166,6 +166,8 @@ namespace DynamicData.Tests.Cache
             //should be the sum of 2 values
             element.Value.Should().Be(2);
 
+            CheckAgainstExpected(results.Data, InitialResults());
+
             _joinLabelsSource.AddOrUpdate(new DataElement<string>("3", "_", "J1"));
 
             Debug.WriteLine("");
@@ -174,6 +176,18 @@ namespace DynamicData.Tests.Cache
 
             //should be the sum of 3 values
             element.Value.Should().Be(3);
+
+            CheckAgainstExpected(results.Data, SecondResults());
+
+            //check reducing down to one label
+            _joinLabelsSource.AddOrUpdate(new DataElement<string>("4", "_", "J1"));
+
+            CheckAgainstExpected(results.Data, ThirdResults());
+
+            //check adding new label
+            _joinLabelsSource.AddOrUpdate(new DataElement<string>("4", "_", "X"));
+
+            CheckAgainstExpected(results.Data, FourthResults());
         }
 
         [Fact]
@@ -263,20 +277,14 @@ namespace DynamicData.Tests.Cache
             _valuesSource.AddOrUpdate(new DataElement<double>("2", "A", 1.0));
             _valuesSource.AddOrUpdate(new DataElement<double>("3", "A", 1.0));
             _valuesSource.AddOrUpdate(new DataElement<double>("4", "A", 1.0));
-            _valuesSource.AddOrUpdate(new DataElement<double>("5", "A", 1.0));
-            _valuesSource.AddOrUpdate(new DataElement<double>("6", "A", 1.0));
             _valuesSource.AddOrUpdate(new DataElement<double>("1", "B", 1.0));
             _valuesSource.AddOrUpdate(new DataElement<double>("2", "B", 1.0));
             _valuesSource.AddOrUpdate(new DataElement<double>("3", "B", 1.0));
             _valuesSource.AddOrUpdate(new DataElement<double>("4", "B", 1.0));
-            _valuesSource.AddOrUpdate(new DataElement<double>("5", "B", 1.0));
-            _valuesSource.AddOrUpdate(new DataElement<double>("6", "B", 1.0));
             _valuesSource.AddOrUpdate(new DataElement<double>("1", "C", 1.0));
             _valuesSource.AddOrUpdate(new DataElement<double>("2", "C", 1.0));
             _valuesSource.AddOrUpdate(new DataElement<double>("3", "C", 1.0));
             _valuesSource.AddOrUpdate(new DataElement<double>("4", "C", 1.0));
-            _valuesSource.AddOrUpdate(new DataElement<double>("5", "C", 1.0));
-            _valuesSource.AddOrUpdate(new DataElement<double>("6", "C", 1.0));
         }
 
         private void LoadLabels()
@@ -285,8 +293,82 @@ namespace DynamicData.Tests.Cache
             _joinLabelsSource.AddOrUpdate(new DataElement<string>("2", "_", "J1"));
             _joinLabelsSource.AddOrUpdate(new DataElement<string>("3", "_", "J2"));
             _joinLabelsSource.AddOrUpdate(new DataElement<string>("4", "_", "J2"));
-            _joinLabelsSource.AddOrUpdate(new DataElement<string>("5", "_", "J3"));
-            _joinLabelsSource.AddOrUpdate(new DataElement<string>("6", "_", "J3"));
+        }
+
+        private void CheckAgainstExpected(IObservableCache<DataElement<double>, (string itemName, string captureName)> result, Dictionary<(string, string), double> expected)
+        {
+            foreach (var e in expected)
+            {
+                result.Lookup(e.Key).Value.Value.Should().Be(e.Value);
+            }
+
+            result.Count.Should().Be(expected.Count);
+        }
+        
+        /// <summary>
+        /// These are the expected values once both caches are populated with data
+        /// </summary>
+        /// <returns></returns>
+        private Dictionary<(string, string), double> InitialResults()
+        {
+            var dict = new Dictionary<(string, string), double>();
+
+            dict[("J1", "A")] = 2.0;
+            dict[("J2", "A")] = 2.0;
+            dict[("J1", "B")] = 2.0;
+            dict[("J2", "B")] = 2.0;
+            dict[("J1", "C")] = 2.0;
+            dict[("J2", "C")] = 2.0;
+
+            return dict;
+        }
+
+
+        /// <summary>
+        /// These are the expected values once position 3 label is changed from J2 to J1
+        /// </summary>
+        /// <returns></returns>
+        private Dictionary<(string, string), double> SecondResults()
+        {
+            var dict = new Dictionary<(string, string), double>();
+
+            dict[("J1", "A")] = 3.0;
+            dict[("J2", "A")] = 1.0;
+            dict[("J1", "B")] = 3.0;
+            dict[("J2", "B")] = 1.0;
+            dict[("J1", "C")] = 3.0;
+            dict[("J2", "C")] = 1.0;
+
+            return dict;
+        }
+
+        /// <summary>
+        /// These are the expected values once position 4 label is changed from J2 to J1
+        /// </summary>
+        /// <returns></returns>
+        private Dictionary<(string, string), double> ThirdResults()
+        {
+            var dict = new Dictionary<(string, string), double>();
+
+            dict[("J1", "A")] = 4.0;
+            dict[("J1", "B")] = 4.0;
+            dict[("J1", "C")] = 4.0;
+
+            return dict;
+        }
+
+        private Dictionary<(string, string), double> FourthResults()
+        {
+            var dict = new Dictionary<(string, string), double>();
+
+            dict[("J1", "A")] = 3.0;
+            dict[("X", "A")] = 1.0;
+            dict[("J1", "B")] = 3.0;
+            dict[("X", "B")] = 1.0;
+            dict[("J1", "C")] = 3.0;
+            dict[("X", "C")] = 1.0;
+
+            return dict;
         }
 
         public void Dispose()
