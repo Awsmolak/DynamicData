@@ -166,7 +166,7 @@ namespace DynamicData.Tests.Cache
             //should be the sum of 2 values
             element.Value.Should().Be(2);
 
-            CheckAgainstExpected(results.Data, InitialResults());
+            CheckAgainstExpected(results.Data, ExpectedInitial());
 
             _joinLabelsSource.AddOrUpdate(new DataElement<string>("3", "_", "J1"));
 
@@ -177,24 +177,24 @@ namespace DynamicData.Tests.Cache
             //should be the sum of 3 values
             element.Value.Should().Be(3);
 
-            CheckAgainstExpected(results.Data, SecondResults());
+            CheckAgainstExpected(results.Data, ExpectedSecond());
 
             //check reducing down to one label
             _joinLabelsSource.AddOrUpdate(new DataElement<string>("4", "_", "J1"));
 
-            CheckAgainstExpected(results.Data, ThirdResults());
+            CheckAgainstExpected(results.Data, ExpectedThird());
 
             //check adding new label
             _joinLabelsSource.AddOrUpdate(new DataElement<string>("4", "_", "X"));
 
-            CheckAgainstExpected(results.Data, FourthResults());
+            CheckAgainstExpected(results.Data, ExpectedFourth());
 
             //check adding new capture
             AddCapture("D");
-            CheckAgainstExpected(results.Data, FifthResults());
+            CheckAgainstExpected(results.Data, ExpectedFifth());
 
             RemoveCapture("D");
-            CheckAgainstExpected(results.Data, FourthResults());
+            CheckAgainstExpected(results.Data, ExpectedFourth());
         }
 
         [Fact]
@@ -301,6 +301,7 @@ namespace DynamicData.Tests.Cache
         {
             _valuesSource.Edit(inner =>
             {
+                //note: the "matrix" is never "jagged", my application guarantees rectangularity
                 inner.AddOrUpdate(new DataElement<double>("1", captureString, 1.0));
                 inner.AddOrUpdate(new DataElement<double>("2", captureString, 1.0));
                 inner.AddOrUpdate(new DataElement<double>("3", captureString, 1.0));
@@ -344,7 +345,7 @@ namespace DynamicData.Tests.Cache
         /// These are the expected values once both caches are populated with data
         /// </summary>
         /// <returns></returns>
-        private Dictionary<(string, string), double> InitialResults()
+        private Dictionary<(string, string), double> ExpectedInitial()
         {
             var dict = new Dictionary<(string, string), double>();
 
@@ -363,7 +364,7 @@ namespace DynamicData.Tests.Cache
         /// These are the expected values once position 3 label is changed from J2 to J1
         /// </summary>
         /// <returns></returns>
-        private Dictionary<(string, string), double> SecondResults()
+        private Dictionary<(string, string), double> ExpectedSecond()
         {
             var dict = new Dictionary<(string, string), double>();
 
@@ -381,7 +382,7 @@ namespace DynamicData.Tests.Cache
         /// These are the expected values once position 4 label is changed from J2 to J1
         /// </summary>
         /// <returns></returns>
-        private Dictionary<(string, string), double> ThirdResults()
+        private Dictionary<(string, string), double> ExpectedThird()
         {
             var dict = new Dictionary<(string, string), double>();
 
@@ -392,12 +393,12 @@ namespace DynamicData.Tests.Cache
             return dict;
         }
 
-        private Dictionary<(string, string), double> FourthResults()
+        private Dictionary<(string, string), double> ExpectedFourth()
         {
             var dict = new Dictionary<(string, string), double>();
 
             dict[("J1", "A")] = 3.0;
-            dict[("X", "A")] = 1.0;
+            dict[("X", "A")] = 1.0; //a new label, it is applied across each capture group
             dict[("J1", "B")] = 3.0;
             dict[("X", "B")] = 1.0;
             dict[("J1", "C")] = 3.0;
@@ -406,7 +407,7 @@ namespace DynamicData.Tests.Cache
             return dict;
         }
 
-        private Dictionary<(string, string), double> FifthResults()
+        private Dictionary<(string, string), double> ExpectedFifth()
         {
             var dict = new Dictionary<(string, string), double>();
 
@@ -416,8 +417,8 @@ namespace DynamicData.Tests.Cache
             dict[("X", "B")] = 1.0;
             dict[("J1", "C")] = 3.0;
             dict[("X", "C")] = 1.0;
-            dict[("J1", "D")] = 3.0;
-            dict[("X", "D")] = 1.0;
+            dict[("J1", "D")] = 3.0; //a new capture here
+            dict[("X", "D")] = 1.0; //a new capture here
 
             return dict;
         }
