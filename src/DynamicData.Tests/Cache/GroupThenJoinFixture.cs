@@ -188,6 +188,13 @@ namespace DynamicData.Tests.Cache
             _joinLabelsSource.AddOrUpdate(new DataElement<string>("4", "_", "X"));
 
             CheckAgainstExpected(results.Data, FourthResults());
+
+            //check adding new capture
+            AddCapture("D");
+            CheckAgainstExpected(results.Data, FifthResults());
+
+            RemoveCapture("D");
+            CheckAgainstExpected(results.Data, FourthResults());
         }
 
         [Fact]
@@ -273,26 +280,54 @@ namespace DynamicData.Tests.Cache
 
         private void LoadValues()
         {
-            _valuesSource.AddOrUpdate(new DataElement<double>("1", "A", 1.0));
-            _valuesSource.AddOrUpdate(new DataElement<double>("2", "A", 1.0));
-            _valuesSource.AddOrUpdate(new DataElement<double>("3", "A", 1.0));
-            _valuesSource.AddOrUpdate(new DataElement<double>("4", "A", 1.0));
-            _valuesSource.AddOrUpdate(new DataElement<double>("1", "B", 1.0));
-            _valuesSource.AddOrUpdate(new DataElement<double>("2", "B", 1.0));
-            _valuesSource.AddOrUpdate(new DataElement<double>("3", "B", 1.0));
-            _valuesSource.AddOrUpdate(new DataElement<double>("4", "B", 1.0));
-            _valuesSource.AddOrUpdate(new DataElement<double>("1", "C", 1.0));
-            _valuesSource.AddOrUpdate(new DataElement<double>("2", "C", 1.0));
-            _valuesSource.AddOrUpdate(new DataElement<double>("3", "C", 1.0));
-            _valuesSource.AddOrUpdate(new DataElement<double>("4", "C", 1.0));
+            _valuesSource.Edit(inner =>
+            {
+                inner.AddOrUpdate(new DataElement<double>("1", "A", 1.0));
+                inner.AddOrUpdate(new DataElement<double>("2", "A", 1.0));
+                inner.AddOrUpdate(new DataElement<double>("3", "A", 1.0));
+                inner.AddOrUpdate(new DataElement<double>("4", "A", 1.0));
+                inner.AddOrUpdate(new DataElement<double>("1", "B", 1.0));
+                inner.AddOrUpdate(new DataElement<double>("2", "B", 1.0));
+                inner.AddOrUpdate(new DataElement<double>("3", "B", 1.0));
+                inner.AddOrUpdate(new DataElement<double>("4", "B", 1.0));
+                inner.AddOrUpdate(new DataElement<double>("1", "C", 1.0));
+                inner.AddOrUpdate(new DataElement<double>("2", "C", 1.0));
+                inner.AddOrUpdate(new DataElement<double>("3", "C", 1.0));
+                inner.AddOrUpdate(new DataElement<double>("4", "C", 1.0));
+            });
+        }
+
+        private void AddCapture(string captureString)
+        {
+            _valuesSource.Edit(inner =>
+            {
+                inner.AddOrUpdate(new DataElement<double>("1", captureString, 1.0));
+                inner.AddOrUpdate(new DataElement<double>("2", captureString, 1.0));
+                inner.AddOrUpdate(new DataElement<double>("3", captureString, 1.0));
+                inner.AddOrUpdate(new DataElement<double>("4", captureString, 1.0));
+            });
+        }
+
+        private void RemoveCapture(string captureString)
+        {
+            _valuesSource.Edit(inner =>
+            {
+                inner.Remove(("1",captureString));
+                inner.Remove(("2", captureString));
+                inner.Remove(("3", captureString));
+                inner.Remove(("4", captureString));
+            });
         }
 
         private void LoadLabels()
         {
-            _joinLabelsSource.AddOrUpdate(new DataElement<string>("1", "_", "J1"));
-            _joinLabelsSource.AddOrUpdate(new DataElement<string>("2", "_", "J1"));
-            _joinLabelsSource.AddOrUpdate(new DataElement<string>("3", "_", "J2"));
-            _joinLabelsSource.AddOrUpdate(new DataElement<string>("4", "_", "J2"));
+            _joinLabelsSource.Edit(inner =>
+            {
+                inner.AddOrUpdate(new DataElement<string>("1", "_", "J1"));
+                inner.AddOrUpdate(new DataElement<string>("2", "_", "J1"));
+                inner.AddOrUpdate(new DataElement<string>("3", "_", "J2"));
+                inner.AddOrUpdate(new DataElement<string>("4", "_", "J2"));
+            });
         }
 
         private void CheckAgainstExpected(IObservableCache<DataElement<double>, (string itemName, string captureName)> result, Dictionary<(string, string), double> expected)
@@ -370,6 +405,23 @@ namespace DynamicData.Tests.Cache
 
             return dict;
         }
+
+        private Dictionary<(string, string), double> FifthResults()
+        {
+            var dict = new Dictionary<(string, string), double>();
+
+            dict[("J1", "A")] = 3.0;
+            dict[("X", "A")] = 1.0;
+            dict[("J1", "B")] = 3.0;
+            dict[("X", "B")] = 1.0;
+            dict[("J1", "C")] = 3.0;
+            dict[("X", "C")] = 1.0;
+            dict[("J1", "D")] = 3.0;
+            dict[("X", "D")] = 1.0;
+
+            return dict;
+        }
+
 
         public void Dispose()
         {
