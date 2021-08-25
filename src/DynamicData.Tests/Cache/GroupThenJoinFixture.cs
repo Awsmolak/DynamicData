@@ -2,14 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Reactive.Concurrency;
-using System.Reactive.Disposables;
-using System.Reactive.Linq;
-using System.Text;
-using DynamicData.Binding;
-using DynamicData.Cache;
 using DynamicData.Cache.Internal;
-using DynamicData.Kernel;
 using FluentAssertions;
 using Xunit;
 
@@ -101,7 +94,7 @@ namespace DynamicData.Tests.Cache
             var input1 = _valuesSource.Connect();
             var input2 = _joinLabelsSource.Connect().ChangeKey(x => x.ItemName);
 
-            var captureGroups = input1.GroupOnProperty(x => x.CaptureName)
+            var captureGroups = input1.Group(x => x.CaptureName)
                 .Transform(g => (g.Cache, g.Key), true);
 
             var capGroupsWithReps = captureGroups.Transform(group =>
@@ -132,6 +125,9 @@ namespace DynamicData.Tests.Cache
                 return (joined, group.Key);
 
             }, true); // NOTE: does this one need to be here for the group add/remove? .AutoRefreshOnObservable(x => input2);
+
+
+            var xxx = capGroupsWithReps.AsObservableCache();
 
             var groupedOnRep = capGroupsWithReps
                 .AutoRefreshOnObservable(x => x.joined)//NOTE: This AROE must be here for things to work
@@ -166,7 +162,7 @@ namespace DynamicData.Tests.Cache
             //should be the sum of 2 values
             element.Value.Should().Be(2);
 
-            CheckAgainstExpected(results.Data, ExpectedInitial());
+            CheckAgainstExpected(results.Data, Data.ExpectedInitial());
 
             _joinLabelsSource.AddOrUpdate(new DataElement<string>("3", "_", "J1"));
 
@@ -177,33 +173,99 @@ namespace DynamicData.Tests.Cache
             //should be the sum of 3 values
             element.Value.Should().Be(3);
 
-            CheckAgainstExpected(results.Data, ExpectedSecond());
+            CheckAgainstExpected(results.Data, Data.ExpectedSecond());
 
             //check reducing down to one label
             _joinLabelsSource.AddOrUpdate(new DataElement<string>("4", "_", "J1"));
 
-            CheckAgainstExpected(results.Data, ExpectedThird());
+            CheckAgainstExpected(results.Data, Data.ExpectedThird());
 
             //check adding new label
             _joinLabelsSource.AddOrUpdate(new DataElement<string>("4", "_", "X"));
 
-            CheckAgainstExpected(results.Data, ExpectedFourth());
+            CheckAgainstExpected(results.Data, Data.ExpectedFourth());
 
             //check adding new capture
             AddCapture("D");
-            CheckAgainstExpected(results.Data, ExpectedFifth());
+            CheckAgainstExpected(results.Data, Data.ExpectedFifth());
 
             RemoveCapture("D");
-            CheckAgainstExpected(results.Data, ExpectedFourth());
+            CheckAgainstExpected(results.Data, Data.ExpectedFourth());
+        }
+
+
+        [Fact]
+        public void RolandsGo()
+        {
+            //use this if you directly mutate DataElement<double>.Value -> forces re-evalutation of grouping.
+            //var values = _valuesSource.Connect().AutoRefresh(v => v.Value);
+            // TEST BY: _valuesSource.Items.First().Value = 5;
+
+            //otherwise 
+            var values = _valuesSource.Connect();
+
+            var itWorksIThink = _joinLabelsSource.Connect()
+                .ChangeKey(x => x.ItemName)
+                // Expand the original to include the appropriate label / capture combination
+                .InnerJoin(values, x => x.ItemName, (label, value) => new DataElement<double>(label.Value, value.CaptureName, value.Value))
+                // This is the bad boy that unlocks it. Returns an array for each change rather than an inner cache.
+                .GroupWithImmutableState(x => x.Key)
+                .Transform((group, key) =>
+                {
+                    var value = group.Items.Sum(de => de.Value);
+                    return new DataElement<double>(key.itemName, key.captureName, value);
+                });
+
+            var results = itWorksIThink.AsAggregator();
+
+            LoadValues();
+            LoadLabels();
+
+            var element = results.Data.Lookup(("J1", "A")).Value;
+
+            //should be the sum of 2 values
+            element.Value.Should().Be(2);
+
+            CheckAgainstExpected(results.Data, Data.ExpectedInitial());
+
+            _joinLabelsSource.AddOrUpdate(new DataElement<string>("3", "_", "J1"));
+
+            Debug.WriteLine("");
+
+            element = results.Data.Lookup(("J1", "A")).Value;
+
+            //should be the sum of 3 values
+            element.Value.Should().Be(3);
+
+            CheckAgainstExpected(results.Data, Data.ExpectedSecond());
+
+            //check reducing down to one label
+            _joinLabelsSource.AddOrUpdate(new DataElement<string>("4", "_", "J1"));
+
+            CheckAgainstExpected(results.Data, Data.ExpectedThird());
+
+            //check adding new label
+            _joinLabelsSource.AddOrUpdate(new DataElement<string>("4", "_", "X"));
+
+            CheckAgainstExpected(results.Data, Data.ExpectedFourth());
+
+            //check adding new capture
+            AddCapture("D");
+            CheckAgainstExpected(results.Data, Data.ExpectedFifth());
+
+            RemoveCapture("D");
+            CheckAgainstExpected(results.Data, Data.ExpectedFourth());
+
+
         }
 
         [Fact]
         public void ThisDeadlocks()
         {
-            var input1 = _valuesSource.Connect();
             var input2 = _joinLabelsSource.Connect().ChangeKey(x => x.ItemName);
 
-            var captureGroups = input1.GroupOnProperty(x => x.CaptureName)
+            var captureGroups = _valuesSource.Connect()
+                .Group(x => x.CaptureName)
                 .Transform(g => (g.Cache, g.Key), true);
 
             var capGroupsWithReps = captureGroups.Transform(group =>
@@ -278,25 +340,9 @@ namespace DynamicData.Tests.Cache
             element.Value.Should().Be(3);
         }
 
-        private void LoadValues()
-        {
-            _valuesSource.Edit(inner =>
-            {
-                inner.AddOrUpdate(new DataElement<double>("1", "A", 1.0));
-                inner.AddOrUpdate(new DataElement<double>("2", "A", 1.0));
-                inner.AddOrUpdate(new DataElement<double>("3", "A", 1.0));
-                inner.AddOrUpdate(new DataElement<double>("4", "A", 1.0));
-                inner.AddOrUpdate(new DataElement<double>("1", "B", 1.0));
-                inner.AddOrUpdate(new DataElement<double>("2", "B", 1.0));
-                inner.AddOrUpdate(new DataElement<double>("3", "B", 1.0));
-                inner.AddOrUpdate(new DataElement<double>("4", "B", 1.0));
-                inner.AddOrUpdate(new DataElement<double>("1", "C", 1.0));
-                inner.AddOrUpdate(new DataElement<double>("2", "C", 1.0));
-                inner.AddOrUpdate(new DataElement<double>("3", "C", 1.0));
-                inner.AddOrUpdate(new DataElement<double>("4", "C", 1.0));
-            });
-        }
-
+        private void LoadValues() => _valuesSource.AddOrUpdate(Data.Values());
+        private void LoadLabels() => _joinLabelsSource.AddOrUpdate(Data.Labels());
+        
         private void AddCapture(string captureString)
         {
             _valuesSource.Edit(inner =>
@@ -320,16 +366,7 @@ namespace DynamicData.Tests.Cache
             });
         }
 
-        private void LoadLabels()
-        {
-            _joinLabelsSource.Edit(inner =>
-            {
-                inner.AddOrUpdate(new DataElement<string>("1", "_", "J1"));
-                inner.AddOrUpdate(new DataElement<string>("2", "_", "J1"));
-                inner.AddOrUpdate(new DataElement<string>("3", "_", "J2"));
-                inner.AddOrUpdate(new DataElement<string>("4", "_", "J2"));
-            });
-        }
+
 
         private void CheckAgainstExpected(IObservableCache<DataElement<double>, (string itemName, string captureName)> result, Dictionary<(string, string), double> expected)
         {
@@ -341,88 +378,6 @@ namespace DynamicData.Tests.Cache
             result.Count.Should().Be(expected.Count);
         }
         
-        /// <summary>
-        /// These are the expected values once both caches are populated with data
-        /// </summary>
-        /// <returns></returns>
-        private Dictionary<(string, string), double> ExpectedInitial()
-        {
-            var dict = new Dictionary<(string, string), double>();
-
-            dict[("J1", "A")] = 2.0;
-            dict[("J2", "A")] = 2.0;
-            dict[("J1", "B")] = 2.0;
-            dict[("J2", "B")] = 2.0;
-            dict[("J1", "C")] = 2.0;
-            dict[("J2", "C")] = 2.0;
-
-            return dict;
-        }
-
-
-        /// <summary>
-        /// These are the expected values once position 3 label is changed from J2 to J1
-        /// </summary>
-        /// <returns></returns>
-        private Dictionary<(string, string), double> ExpectedSecond()
-        {
-            var dict = new Dictionary<(string, string), double>();
-
-            dict[("J1", "A")] = 3.0;
-            dict[("J2", "A")] = 1.0;
-            dict[("J1", "B")] = 3.0;
-            dict[("J2", "B")] = 1.0;
-            dict[("J1", "C")] = 3.0;
-            dict[("J2", "C")] = 1.0;
-
-            return dict;
-        }
-
-        /// <summary>
-        /// These are the expected values once position 4 label is changed from J2 to J1
-        /// </summary>
-        /// <returns></returns>
-        private Dictionary<(string, string), double> ExpectedThird()
-        {
-            var dict = new Dictionary<(string, string), double>();
-
-            dict[("J1", "A")] = 4.0;
-            dict[("J1", "B")] = 4.0;
-            dict[("J1", "C")] = 4.0;
-
-            return dict;
-        }
-
-        private Dictionary<(string, string), double> ExpectedFourth()
-        {
-            var dict = new Dictionary<(string, string), double>();
-
-            dict[("J1", "A")] = 3.0;
-            dict[("X", "A")] = 1.0; //a new label, it is applied across each capture group
-            dict[("J1", "B")] = 3.0;
-            dict[("X", "B")] = 1.0;
-            dict[("J1", "C")] = 3.0;
-            dict[("X", "C")] = 1.0;
-
-            return dict;
-        }
-
-        private Dictionary<(string, string), double> ExpectedFifth()
-        {
-            var dict = new Dictionary<(string, string), double>();
-
-            dict[("J1", "A")] = 3.0;
-            dict[("X", "A")] = 1.0;
-            dict[("J1", "B")] = 3.0;
-            dict[("X", "B")] = 1.0;
-            dict[("J1", "C")] = 3.0;
-            dict[("X", "C")] = 1.0;
-            dict[("J1", "D")] = 3.0; //a new capture here
-            dict[("X", "D")] = 1.0; //a new capture here
-
-            return dict;
-        }
-
 
         public void Dispose()
         {
@@ -431,29 +386,6 @@ namespace DynamicData.Tests.Cache
         }
     }
 
-    public class DataElement<T> : AbstractNotifyPropertyChanged
-    {
-        public string ItemName { get; }
-
-        public string CaptureName { get; }
-
-        public (string itemName, string captureName) Key => (ItemName, CaptureName);
-
-        private T _value;
-
-        public T Value
-        {
-            get => _value;
-            set => SetAndRaise(ref _value, value);
-        }
-
-        public DataElement(string itemName, string captureName, T value)
-        {
-            ItemName = itemName;
-            CaptureName = captureName;
-            _value = value;
-        }
-    }
 
     public static class DynamicDataExtensions
     {
