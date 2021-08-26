@@ -37,26 +37,26 @@ namespace DynamicData.Tests.Cache
     {
         public static IEnumerable<DataElement<string>> Labels()
         {
-            yield return (new DataElement<string>("1", "_", "J1"));
-            yield return (new DataElement<string>("2", "_", "J1"));
-            yield return (new DataElement<string>("3", "_", "J2"));
-            yield return (new DataElement<string>("4", "_", "J2"));
+            yield return (new DataElement<string>("W1", "_", "J1"));
+            yield return (new DataElement<string>("W2", "_", "J1"));
+            yield return (new DataElement<string>("W3", "_", "J2"));
+            yield return (new DataElement<string>("W4", "_", "J2"));
         }
 
         public static IEnumerable<DataElement<double>> Values()
         {
-            yield return (new DataElement<double>("1", "A", 1.0));
-            yield return (new DataElement<double>("2", "A", 1.0));
-            yield return (new DataElement<double>("3", "A", 1.0));
-            yield return (new DataElement<double>("4", "A", 1.0));
-            yield return (new DataElement<double>("1", "B", 1.0));
-            yield return (new DataElement<double>("2", "B", 1.0));
-            yield return (new DataElement<double>("3", "B", 1.0));
-            yield return (new DataElement<double>("4", "B", 1.0));
-            yield return (new DataElement<double>("1", "C", 1.0));
-            yield return (new DataElement<double>("2", "C", 1.0));
-            yield return (new DataElement<double>("3", "C", 1.0));
-            yield return (new DataElement<double>("4", "C", 1.0));
+            yield return (new DataElement<double>("W1", "CapA", 1.0));
+            yield return (new DataElement<double>("W2", "CapA", 1.0));
+            yield return (new DataElement<double>("W3", "CapA", 1.0));
+            yield return (new DataElement<double>("W4", "CapA", 1.0));
+            yield return (new DataElement<double>("W1", "CapB", 1.0));
+            yield return (new DataElement<double>("W2", "CapB", 1.0));
+            yield return (new DataElement<double>("W3", "CapB", 1.0));
+            yield return (new DataElement<double>("W4", "CapB", 1.0));
+            yield return (new DataElement<double>("W1", "CapC", 1.0));
+            yield return (new DataElement<double>("W2", "CapC", 1.0));
+            yield return (new DataElement<double>("W3", "CapC", 1.0));
+            yield return (new DataElement<double>("W4", "CapC", 1.0));
         }
 
         /// <summary>
@@ -67,12 +67,12 @@ namespace DynamicData.Tests.Cache
         {
             var dict = new Dictionary<(string, string), double>
             {
-                [("J1", "A")] = 2.0,
-                [("J2", "A")] = 2.0,
-                [("J1", "B")] = 2.0,
-                [("J2", "B")] = 2.0,
-                [("J1", "C")] = 2.0,
-                [("J2", "C")] = 2.0
+                [("J1", "CapA")] = 2.0,
+                [("J2", "CapA")] = 2.0,
+                [("J1", "CapB")] = 2.0,
+                [("J2", "CapB")] = 2.0,
+                [("J1", "CapC")] = 2.0,
+                [("J2", "CapC")] = 2.0
             };
 
             return dict;
@@ -86,12 +86,12 @@ namespace DynamicData.Tests.Cache
         {
             var dict = new Dictionary<(string, string), double>
             {
-                [("J1", "A")] = 3.0,
-                [("J2", "A")] = 1.0,
-                [("J1", "B")] = 3.0,
-                [("J2", "B")] = 1.0,
-                [("J1", "C")] = 3.0,
-                [("J2", "C")] = 1.0
+                [("J1", "CapA")] = 3.0,
+                [("J2", "CapA")] = 1.0,
+                [("J1", "CapB")] = 3.0,
+                [("J2", "CapB")] = 1.0,
+                [("J1", "CapC")] = 3.0,
+                [("J2", "CapC")] = 1.0
             };
 
             return dict;
@@ -105,9 +105,9 @@ namespace DynamicData.Tests.Cache
         {
             var dict = new Dictionary<(string, string), double>
             {
-                [("J1", "A")] = 4.0,
-                [("J1", "B")] = 4.0,
-                [("J1", "C")] = 4.0
+                [("J1", "CapA")] = 4.0,
+                [("J1", "CapB")] = 4.0,
+                [("J1", "CapC")] = 4.0
             };
 
             return dict;
@@ -117,12 +117,12 @@ namespace DynamicData.Tests.Cache
         {
             var dict = new Dictionary<(string, string), double>
             {
-                [("J1", "A")] = 3.0,
-                [("X", "A")] = 1.0, //a new label, it is applied across each capture group
-                [("J1", "B")] = 3.0,
-                [("X", "B")] = 1.0,
-                [("J1", "C")] = 3.0,
-                [("X", "C")] = 1.0
+                [("J1", "CapA")] = 3.0,
+                [("X", "CapA")] = 1.0, //a new label, it is applied across each capture group
+                [("J1", "CapB")] = 3.0,
+                [("X", "CapB")] = 1.0,
+                [("J1", "CapC")] = 3.0,
+                [("X", "CapC")] = 1.0
             };
 
             return dict;
@@ -132,14 +132,14 @@ namespace DynamicData.Tests.Cache
         {
             var dict = new Dictionary<(string, string), double>
             {
-                [("J1", "A")] = 3.0,
-                [("X", "A")] = 1.0,
-                [("J1", "B")] = 3.0,
-                [("X", "B")] = 1.0,
-                [("J1", "C")] = 3.0,
-                [("X", "C")] = 1.0,
-                [("J1", "D")] = 3.0, //a new capture here
-                [("X", "D")] = 1.0 //a new capture here
+                [("J1", "CapA")] = 3.0,
+                [("X", "CapA")] = 1.0,
+                [("J1", "CapB")] = 3.0,
+                [("X", "CapB")] = 1.0,
+                [("J1", "CapC")] = 3.0,
+                [("X", "CapC")] = 1.0,
+                [("J1", "CapD")] = 3.0, //a new capture here
+                [("X", "CapD")] = 1.0 //a new capture here
             };
 
             return dict;

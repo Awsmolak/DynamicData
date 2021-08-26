@@ -157,18 +157,18 @@ namespace DynamicData.Tests.Cache
 
             Debug.WriteLine("");
 
-            var element = results.Data.Lookup(("J1", "A")).Value;
+            var element = results.Data.Lookup(("J1", "CapA")).Value;
 
             //should be the sum of 2 values
             element.Value.Should().Be(2);
 
             CheckAgainstExpected(results.Data, Data.ExpectedInitial());
 
-            _joinLabelsSource.AddOrUpdate(new DataElement<string>("3", "_", "J1"));
+            _joinLabelsSource.AddOrUpdate(new DataElement<string>("W3", "_", "J1"));
 
             Debug.WriteLine("");
 
-            element = results.Data.Lookup(("J1", "A")).Value;
+            element = results.Data.Lookup(("J1", "CapA")).Value;
 
             //should be the sum of 3 values
             element.Value.Should().Be(3);
@@ -176,12 +176,12 @@ namespace DynamicData.Tests.Cache
             CheckAgainstExpected(results.Data, Data.ExpectedSecond());
 
             //check reducing down to one label
-            _joinLabelsSource.AddOrUpdate(new DataElement<string>("4", "_", "J1"));
+            _joinLabelsSource.AddOrUpdate(new DataElement<string>("W4", "_", "J1"));
 
             CheckAgainstExpected(results.Data, Data.ExpectedThird());
 
             //check adding new label
-            _joinLabelsSource.AddOrUpdate(new DataElement<string>("4", "_", "X"));
+            _joinLabelsSource.AddOrUpdate(new DataElement<string>("W4", "_", "X"));
 
             CheckAgainstExpected(results.Data, Data.ExpectedFourth());
 
@@ -221,18 +221,18 @@ namespace DynamicData.Tests.Cache
             LoadValues();
             LoadLabels();
 
-            var element = results.Data.Lookup(("J1", "A")).Value;
+            var element = results.Data.Lookup(("J1", "CapA")).Value;
 
             //should be the sum of 2 values
             element.Value.Should().Be(2);
 
             CheckAgainstExpected(results.Data, Data.ExpectedInitial());
 
-            _joinLabelsSource.AddOrUpdate(new DataElement<string>("3", "_", "J1"));
+            _joinLabelsSource.AddOrUpdate(new DataElement<string>("W3", "_", "J1"));
 
             Debug.WriteLine("");
 
-            element = results.Data.Lookup(("J1", "A")).Value;
+            element = results.Data.Lookup(("J1", "CapA")).Value;
 
             //should be the sum of 3 values
             element.Value.Should().Be(3);
@@ -240,23 +240,21 @@ namespace DynamicData.Tests.Cache
             CheckAgainstExpected(results.Data, Data.ExpectedSecond());
 
             //check reducing down to one label
-            _joinLabelsSource.AddOrUpdate(new DataElement<string>("4", "_", "J1"));
+            _joinLabelsSource.AddOrUpdate(new DataElement<string>("W4", "_", "J1"));
 
             CheckAgainstExpected(results.Data, Data.ExpectedThird());
 
             //check adding new label
-            _joinLabelsSource.AddOrUpdate(new DataElement<string>("4", "_", "X"));
+            _joinLabelsSource.AddOrUpdate(new DataElement<string>("W4", "_", "X"));
 
             CheckAgainstExpected(results.Data, Data.ExpectedFourth());
 
             //check adding new capture
-            AddCapture("D");
+            AddCapture("CapD");
             CheckAgainstExpected(results.Data, Data.ExpectedFifth());
 
-            RemoveCapture("D");
+            RemoveCapture("CapD");
             CheckAgainstExpected(results.Data, Data.ExpectedFourth());
-
-
         }
 
         [Fact]
@@ -325,16 +323,16 @@ namespace DynamicData.Tests.Cache
 
             Debug.WriteLine("");
 
-            var element = results.Data.Lookup(("J1", "A")).Value;
+            var element = results.Data.Lookup(("J1", "CapA")).Value;
 
             //should be the sum of 2 values
             element.Value.Should().Be(2);
 
-            _joinLabelsSource.AddOrUpdate(new DataElement<string>("3", "_", "J1"));
+            _joinLabelsSource.AddOrUpdate(new DataElement<string>("W3", "_", "J1"));
 
             Debug.WriteLine("");
 
-            element = results.Data.Lookup(("J1", "A")).Value;
+            element = results.Data.Lookup(("J1", "CapA")).Value;
 
             //should be the sum of 3 values
             element.Value.Should().Be(3);
@@ -348,10 +346,10 @@ namespace DynamicData.Tests.Cache
             _valuesSource.Edit(inner =>
             {
                 //note: the "matrix" is never "jagged", my application guarantees rectangularity
-                inner.AddOrUpdate(new DataElement<double>("1", captureString, 1.0));
-                inner.AddOrUpdate(new DataElement<double>("2", captureString, 1.0));
-                inner.AddOrUpdate(new DataElement<double>("3", captureString, 1.0));
-                inner.AddOrUpdate(new DataElement<double>("4", captureString, 1.0));
+                inner.AddOrUpdate(new DataElement<double>("W1", captureString, 1.0));
+                inner.AddOrUpdate(new DataElement<double>("W2", captureString, 1.0));
+                inner.AddOrUpdate(new DataElement<double>("W3", captureString, 1.0));
+                inner.AddOrUpdate(new DataElement<double>("W4", captureString, 1.0));
             });
         }
 
@@ -359,10 +357,10 @@ namespace DynamicData.Tests.Cache
         {
             _valuesSource.Edit(inner =>
             {
-                inner.Remove(("1",captureString));
-                inner.Remove(("2", captureString));
-                inner.Remove(("3", captureString));
-                inner.Remove(("4", captureString));
+                inner.Remove(("W1",captureString));
+                inner.Remove(("W2", captureString));
+                inner.Remove(("W3", captureString));
+                inner.Remove(("W4", captureString));
             });
         }
 
